@@ -1,40 +1,40 @@
-import express, { Express, Request, Response } from "express";
-import swaggerUi from "swagger-ui-express";
-import { swaggerSpec } from "./config/swagger";
-import dotenv from "dotenv";
-import morgan from "morgan";
-import {setupLogging} from "./config/morgan";
+import 'reflect-metadata';
+import express from 'express';
+import { useExpressServer } from 'routing-controllers';
+import { getMetadataArgsStorage } from 'routing-controllers';
+import { routingControllersToSpec } from 'routing-controllers-openapi';
+import swaggerUi from 'swagger-ui-express';
+import { ExampleController } from './controllers/ExampleController';
+import { setupLogging } from "./config/morgan";
 
-dotenv.config();
+const app = express();
 
-const app: Express = express();
-
-// Swagger UI
-// app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-// Morgan for logging
+// Setup morgan logger
 setupLogging(app);
 
-const config = {
-    port: parseInt(process.env.PORT || "3000", 10),
-    host: process.env.HOST || "localhost",
+// Setup routing-controllers
+const routingControllersOptions = {
+    controllers: [ExampleController],
 };
 
-//== Define routes here ==//
-/**
- * @swagger
- * /:
- *  get:
- *  description: Test endpoint
- *  responses:
- *    '200':
- *    description: A successful response
- */
-app.get("/", (req: Request, res: Response) => {
-    res.send("Hello world!");
+useExpressServer(app, routingControllersOptions);
+
+// Generate API spec
+const storage = getMetadataArgsStorage();
+const spec = routingControllersToSpec(storage, routingControllersOptions, {
+    info: {
+        title: 'Express TypeScript Microservice API',
+        version: '1.0.0',
+        description: 'A simple Express TypeScript microservice API',
+    },
 });
 
-//== starts the server and listens for incoming requests ==//
-app.listen(config.port, config.host, () => {
-    console.log(`[server]: Server is running at http://${config.host}:${config.port}`);
-    console.log(`[swagger]: Swagger UI is available at http://${config.host}:${config.port}/api-docs`);
+// Setup Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(spec));
+
+const port = process.env.PORT || 3000;
+
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}`);
+    console.log(`Swagger UI available at http://localhost:${port}/api-docs`);
 });
